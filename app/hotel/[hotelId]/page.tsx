@@ -10,6 +10,8 @@ interface HotelPageProps {
 
 
 export default async function Hotel({ params }: HotelPageProps) {
+  // console.log(params.hotelId);
+  
 
   const hotel = await getHotelById(params.hotelId);
   const { userId } = auth();

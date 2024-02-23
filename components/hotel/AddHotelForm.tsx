@@ -1,4 +1,6 @@
-'use client'
+/** @format */
+
+"use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Hotel, Room } from "@prisma/client"
@@ -16,8 +18,23 @@ import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
 import { Checkbox } from "../ui/checkbox"
 import { useForm } from "react-hook-form"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { UploadButton } from "../uploadthing"
+import { useToast } from "@/components/ui/use-toast"
+import { Button } from "../ui/button"
+import { Loader, XCircle } from "lucide-react"
+import Image from "next/image"
+import axios from "axios"
+import useLocation from "@/hooks/useLocation"
+import { ICity, IState } from "country-state-city"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
 
 interface AddHotelFormPropps {
   hotel: HotelWithRooms | null
@@ -60,8 +77,15 @@ const formSchema = z.object({
 })
 
 export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
-
   const [image, setImage] = useState<string | undefined>(hotel?.image)
+  const [imageIsDeleting, setImageIsDeleting] = useState(false)
+  const [states, setStates] = useState<IState[]>([])
+  const [cities, setCities] = useState<ICity[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  const { toast } = useToast()
+  const { getAllCountries, getCountryStates, getStateCities } = useLocation()
+  const countries = getAllCountries()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -88,10 +112,55 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
     },
   })
 
+  useEffect(() => {
+    const selectedCountry = form.watch("country")
+    const countryStates = getCountryStates(selectedCountry)
+    if (countryStates) {
+      setStates(countryStates)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.watch("country")])
+
+  useEffect(() => {
+    const selectedCountry = form.watch("country")
+    const selectedState = form.watch("state")
+    const stateCities = getStateCities(selectedCountry, selectedState)
+    if (stateCities) {
+      setCities(stateCities)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.watch("country"), form.watch("state")])
+
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log(values)
   }
-  
+
+  const hundleImageDelete = (image: string) => {
+    setImageIsDeleting(true)
+    const imageKey = image.substring(image.lastIndexOf("/") + 1)
+
+    axios
+      .post("/api/uploadthing/delete", { imageKey })
+      .then((res) => {
+        if (res.data.success) {
+          setImage("")
+          toast({
+            variant: "success",
+            description: "Image removed",
+          })
+        }
+      })
+      .catch(() => {
+        toast({
+          variant: "destructive",
+          description: "Something went wrong",
+        })
+      })
+      .finally(() => {
+        setImageIsDeleting(false)
+      })
+  }
+
   return (
     <div>
       <Form {...form}>
@@ -247,7 +316,7 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
-                        </FormControl> 
+                        </FormControl>
                         <FormLabel>Bike Rental</FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -263,7 +332,7 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
-                        </FormControl> 
+                        </FormControl>
                         <FormLabel>Free wifi</FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -279,7 +348,7 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
-                        </FormControl> 
+                        </FormControl>
                         <FormLabel>Movie Night</FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -295,7 +364,7 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
-                        </FormControl> 
+                        </FormControl>
                         <FormLabel>Swimming Pool</FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -311,7 +380,7 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
-                        </FormControl> 
+                        </FormControl>
                         <FormLabel>Coffee Shop</FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -321,40 +390,162 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
               </div>
               <FormField
                 control={form.control}
-                name="image"
-                render={({field}) => (
-                  <FormItem className="flex flex-col space-y-3">
+                name='image'
+                render={({ field }) => (
+                  <FormItem className='flex flex-col space-y-3'>
                     <FormLabel>Upload an Image</FormLabel>
-                    <FormDescription>Choose image that will show-case your hotel nicely</FormDescription>
+                    <FormDescription>
+                      Choose image that will show-case your hotel nicely
+                    </FormDescription>
                     <FormControl>
-                      {image ? 
-                        <></> : 
+                      {image ? (
                         <>
-                          <div className="flex flex-col items-center max-w[4000px] p-12 border-2 border-dashed border-primary/50 rounded mt-4">
+                          <div className='relative max-w-[400px] min-w-[200px] max-h-[400px] min-h-[200px] mt-4'>
+                            <Image
+                              fill
+                              src={image}
+                              alt='hotel image'
+                              className='object-contain'
+                            />
+                            <Button
+                              onClick={() => hundleImageDelete(image)}
+                              type='button'
+                              size='icon'
+                              variant='ghost'
+                              className='absolute right-{-12px]'>
+                              {imageIsDeleting ? <Loader /> : <XCircle />}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className='flex flex-col items-center max-w[4000px] p-12 border-2 border-dashed border-primary/50 rounded mt-4'>
                             <UploadButton
-                              endpoint="imageUploader"
+                              endpoint='imageUploader'
                               onClientUploadComplete={(res: any) => {
-                                console.log("Files: ", res);
-                                alert("Upload Completed");
+                                console.log("Files: ", res)
+                                setImage(res[0].url)
+                                toast({
+                                  variant: "success",
+                                  description: "Upload completed",
+                                })
                               }}
-                              onUploadError={(error: Error) => {
-                                // Do something with the error.
-                                alert(`ERROR! ${error.message}`);
+                              onUploadError={(error: any) => {
+                                toast({
+                                  variant: "destructive",
+                                  description: `ERROR! ${error.message}`,
+                                })
                               }}
                             />
                           </div>
                         </>
-                      }
+                      )}
                     </FormControl>
                   </FormItem>
                 )}
               />
             </div>
-            <div className='flex-1 flex flex-col gap-6'>Part 2</div>
+            <div className='flex-1 flex flex-col gap-6'>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField 
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Country</FormLabel>
+                      <FormDescription>Which country is your property localy ?</FormDescription>
+                      <Select
+                        disabled={isLoading}
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue defaultValue={field.value} placeholder="Select a Country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries.map((country) => {
+                            return <SelectItem key={country.isoCode} value={country.isoCode}>{country.name}</SelectItem>
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                <FormField 
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select State</FormLabel>
+                      <FormDescription>Which State is your property localy ?</FormDescription>
+                      <Select
+                        disabled={isLoading || states.length < 1}
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue defaultValue={field.value} placeholder="Select a State" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {states.map((state) => {
+                            return <SelectItem key={state.isoCode} value={state.isoCode}>{state.name}</SelectItem>
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField 
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select City</FormLabel>
+                    <FormDescription>Which town/city is your property localy ?</FormDescription>
+                    <Select
+                          disabled={isLoading || cities.length < 1}
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          defaultValue={field.value}
+                    >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue defaultValue={field.value} placeholder="Select a City" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cities.map((city) => {
+                              return <SelectItem key={city.name} value={city.name}>{city.name}</SelectItem>
+                            })}
+                          </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='locationDescription'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Description</FormLabel>
+                    <FormDescription>
+                      Provide a detailed location descripption of your hotel
+                    </FormDescription>
+                    <FormControl>
+                      <Textarea
+                        placeholder='Located at the very end of the beach road!'
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
         </form>
       </Form>
     </div>
   )
 }
-
