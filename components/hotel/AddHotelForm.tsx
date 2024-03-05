@@ -691,7 +691,7 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                         <Plus className="mr-2 h-4 w-4" /> Add Room
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-[900px] w-[90%]">
+                    <DialogContent className="max-w-[900px] w-[90%] h-[90%]">
                       <DialogHeader className="px-2">
                         <DialogTitle>Add a Room</DialogTitle>
                         <DialogDescription>
