@@ -1,5 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /** @format */
-
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -22,7 +22,7 @@ import { useEffect, useState } from "react"
 import { UploadButton } from "../uploadthing"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "../ui/button"
-import { Loader, XCircle } from "lucide-react"
+import { Loader2, Pencil, PencilLine, XCircle, Trash, Eye, Terminal, Plus } from "lucide-react"
 import Image from "next/image"
 import axios from "axios"
 import useLocation from "@/hooks/useLocation"
@@ -34,6 +34,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useRouter } from "next/navigation"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import AddRoomForm from "../room/AddRoomForm"
 
 
 interface AddHotelFormPropps {
@@ -82,14 +97,18 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
   const [states, setStates] = useState<IState[]>([])
   const [cities, setCities] = useState<ICity[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isHotelDeleting, setIsHotelDeleting] = useState(false)
+  const [open, setOpen] = useState(false)
+
 
   const { toast } = useToast()
+  const router = useRouter()
   const { getAllCountries, getCountryStates, getStateCities } = useLocation()
   const countries = getAllCountries()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: hotel || {
       title: "",
       description: "",
       image: "",
@@ -113,12 +132,22 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
   })
 
   useEffect(() => {
+    if (typeof image === "string") {
+      form.setValue("image", image, {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      })
+    }
+  }, [image])
+
+  useEffect(() => {
     const selectedCountry = form.watch("country")
     const countryStates = getCountryStates(selectedCountry)
     if (countryStates) {
       setStates(countryStates)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.watch("country")])
 
   useEffect(() => {
@@ -128,11 +157,74 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
     if (stateCities) {
       setCities(stateCities)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.watch("country"), form.watch("state")])
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
+    setIsLoading(true)
+    if (hotel) {
+      // Uppdate hotel
+      axios.patch(`/api/hotel/${hotel.id}`, values).then((res) => {
+        toast({
+          variant: "success",
+          description: "Hotel update!",
+        })
+        router.push(`/hotel/${res.data.id}`)
+        setIsLoading(false)
+      }).catch((err) => {
+        console.log(err)
+        toast({
+          variant: "destructive",
+          description: "Something went wrong!",
+        })
+        setIsLoading(false)
+      })
+    } else {
+      // Create hotel
+      axios
+        .post("/api/hotel", values)
+        .then((res) => {
+          toast({
+            variant: "success",
+            description: "Hotel created",
+          })
+          router.push(`/hotel/${res.data.id}`)
+          setIsLoading(false)
+        })
+        .catch((err) => {
+          console.log(err)
+          toast({
+            variant: "destructive",
+            description: "Something went wrong!",
+          })
+          setIsLoading(false)
+        })
+    }
+  }
+
+  const handleDeleteHotel = async (hotel: HotelWithRooms) => {
+    setIsHotelDeleting(true)
+    const getImageKey = (src: string) => src.substring(src.lastIndexOf('/') + 1)
+
+    try{
+      const imageKey = getImageKey(hotel.image)
+      await axios.post('/api/uploadthing/delete', { imageKey })
+      await axios.delete(`/api/hotel/${hotel.id}`)
+
+      setIsHotelDeleting(false)
+      toast({
+        variant: "success",
+        description: "Hotel delete!",
+      })
+      router.push('/hotel/new')
+    } catch (error: any){
+      console.log(error)
+      setIsHotelDeleting(false)
+      toast({
+        variant: "destructive",
+        description: `Hotel deleting could not be completed! ${error.message}`,
+      })
+    }
   }
 
   const hundleImageDelete = (image: string) => {
@@ -159,6 +251,10 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
       .finally(() => {
         setImageIsDeleting(false)
       })
+  }
+
+  const handleDialogueOpen = () => {
+    setOpen(prev => !prev)
   }
 
   return (
@@ -253,7 +349,7 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <FormLabel>Spa</FormLabel>
+                        <FormLabel>Bar</FormLabel>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -412,8 +508,8 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                               type='button'
                               size='icon'
                               variant='ghost'
-                              className='absolute right-{-12px]'>
-                              {imageIsDeleting ? <Loader /> : <XCircle />}
+                              className='absolute right-{-12px] top-0'>
+                              {imageIsDeleting ? <Loader2 /> : <XCircle />}
                             </Button>
                           </div>
                         </>
@@ -446,51 +542,71 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
               />
             </div>
             <div className='flex-1 flex flex-col gap-6'>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField 
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormField
                   control={form.control}
-                  name="country"
+                  name='country'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Select Country</FormLabel>
-                      <FormDescription>Which country is your property localy ?</FormDescription>
+                      <FormDescription>
+                        Which country is your property localy ?
+                      </FormDescription>
                       <Select
                         disabled={isLoading}
                         onValueChange={field.onChange}
                         value={field.value}
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue defaultValue={field.value} placeholder="Select a Country" />
+                        defaultValue={field.value}>
+                        <SelectTrigger className='bg-background'>
+                          <SelectValue
+                            defaultValue={field.value}
+                            placeholder='Select a Country'
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {countries.map((country) => {
-                            return <SelectItem key={country.isoCode} value={country.isoCode}>{country.name}</SelectItem>
+                            return (
+                              <SelectItem
+                                key={country.isoCode}
+                                value={country.isoCode}>
+                                {country.name}
+                              </SelectItem>
+                            )
                           })}
                         </SelectContent>
                       </Select>
                     </FormItem>
                   )}
                 />
-                <FormField 
+                <FormField
                   control={form.control}
-                  name="state"
+                  name='state'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Select State</FormLabel>
-                      <FormDescription>Which State is your property localy ?</FormDescription>
+                      <FormDescription>
+                        Which State is your property localy ?
+                      </FormDescription>
                       <Select
                         disabled={isLoading || states.length < 1}
                         onValueChange={field.onChange}
                         value={field.value}
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue defaultValue={field.value} placeholder="Select a State" />
+                        defaultValue={field.value}>
+                        <SelectTrigger className='bg-background'>
+                          <SelectValue
+                            defaultValue={field.value}
+                            placeholder='Select a State'
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {states.map((state) => {
-                            return <SelectItem key={state.isoCode} value={state.isoCode}>{state.name}</SelectItem>
+                            return (
+                              <SelectItem
+                                key={state.isoCode}
+                                value={state.isoCode}>
+                                {state.name}
+                              </SelectItem>
+                            )
                           })}
                         </SelectContent>
                       </Select>
@@ -498,27 +614,35 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                   )}
                 />
               </div>
-              <FormField 
+              <FormField
                 control={form.control}
-                name="city"
+                name='city'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Select City</FormLabel>
-                    <FormDescription>Which town/city is your property localy ?</FormDescription>
+                    <FormDescription>
+                      Which town/city is your property localy ?
+                    </FormDescription>
                     <Select
-                          disabled={isLoading || cities.length < 1}
-                          onValueChange={field.onChange}
-                          value={field.value}
+                      disabled={isLoading || cities.length < 1}
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      defaultValue={field.value}>
+                      <SelectTrigger className='bg-background'>
+                        <SelectValue
                           defaultValue={field.value}
-                    >
-                          <SelectTrigger className="bg-background">
-                            <SelectValue defaultValue={field.value} placeholder="Select a City" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {cities.map((city) => {
-                              return <SelectItem key={city.name} value={city.name}>{city.name}</SelectItem>
-                            })}
-                          </SelectContent>
+                          placeholder='Select a City'
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cities.map((city) => {
+                          return (
+                            <SelectItem key={city.name} value={city.name}>
+                              {city.name}
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
                     </Select>
                   </FormItem>
                 )}
@@ -530,7 +654,7 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                   <FormItem>
                     <FormLabel>Location Description</FormLabel>
                     <FormDescription>
-                      Provide a detailed location descripption of your hotel
+                      Provide a detailed location description of your hotel
                     </FormDescription>
                     <FormControl>
                       <Textarea
@@ -542,6 +666,73 @@ export default function AddHotelForm({ hotel }: AddHotelFormPropps) {
                   </FormItem>
                 )}
               />
+
+              {hotel && !hotel.rooms.length && <Alert className="bg-indigo-600 text-white">
+                <Terminal className="h-4 w-4 stroke-white" />
+                <AlertTitle>Heads up!</AlertTitle>
+                <AlertDescription>
+                  Your hotel was created successfuly
+                  <div>lease and some rooms to comlete your hotel setup!</div>
+                </AlertDescription>
+              </Alert>}
+
+              <div className='flex justify-between gap-2 flex-wrap'>
+                {hotel && <Button onClick={()=> handleDeleteHotel(hotel)} variant="ghost" type="button" className="maw-w-[150px]" disabled={isHotelDeleting || isLoading}>
+                  {isHotelDeleting ? <><Loader2 className="mr-2 h-4 w-4"/>Deleting</> : <><Trash className="mr-2 h-4 w-4" />Delete</>}
+                </Button>
+                }
+
+                {hotel && <Button onClick={()=> router.push(`/hotel-details/${hotel.id}`)} variant="outline" type="button"><Eye className="mr-2 h-4 w-4" />View</Button>}
+
+                {hotel && 
+                  <Dialog open={open} onOpenChange={setOpen}>
+                    <DialogTrigger>
+                      <Button type="button" variant="outline" className="max-w-[150x]">
+                        <Plus className="mr-2 h-4 w-4" /> Add Room
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-[900px] w-[90%]">
+                      <DialogHeader className="px-2">
+                        <DialogTitle>Add a Room</DialogTitle>
+                        <DialogDescription>
+                          Add details about a room in your hotel
+                        </DialogDescription>
+                      </DialogHeader>
+                      <AddRoomForm hotel={hotel} handleDialogueOpen={handleDialogueOpen}/>
+                    </DialogContent>
+                  </Dialog>
+                }
+
+                {hotel ? 
+                  <Button className='max-w-[150px]' disabled={isLoading}>
+                    {isLoading ? 
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4' />
+                        Updating
+                      </>
+                    : 
+                      <>
+                        <PencilLine className='mr-2 h-4 w-4' />
+                        Update
+                      </>
+                    }
+                  </Button> 
+                  : 
+                  <Button className='max-w-[150px]' disabled={isLoading}>
+                    {isLoading ? 
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4' />
+                        Creating
+                      </>
+                     : 
+                      <>
+                        <Pencil className='mr-2 h-4 w-4' />
+                        Create Hotel
+                      </>
+                    }
+                  </Button>
+                }
+              </div>
             </div>
           </div>
         </form>
