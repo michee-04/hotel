@@ -46,14 +46,14 @@ model Hotel {
 model Room {
   id String @id @default(uuid())
   title String
-  descrition String 
+  description String 
   bedCount Int @default(0)
   guestCount Int @default(0)
   bathRoomCount Int @default(0)
   kingBed Int @default(0)
-  bedCqueenBenount Int @default(0)
+  queenBed Int @default(0)
   image String
-  breackFastPrica Int
+  breackFastPrice Int
   roomPrice Int
   roomService Boolean @default(false)
   Tv Boolean @default(false)
