@@ -71,7 +71,7 @@ function HotelCard({ hotel }: { hotel: HotelWithRooms }) {
             </div>
             {isMyHotel && (
               <Button
-                onClick={() => router.push(`/hotel${hotel.id}`)}
+                onClick={() => router.push(`/hotel/${hotel.id}`)}
                 variant='outline'>
                 Edit
               </Button>
