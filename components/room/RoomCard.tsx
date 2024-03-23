@@ -402,12 +402,12 @@ function RoomCard({ hotel, room, bookings = [] }: RoomCardProps) {
                 onClick={() => handleRoomDelete(room)}>
                 {isLoading ? (
                   <>
-                    <Loader2 className='mr-2 w-4 h-2' />
+                    <Loader2 className='mr-2 w-4 h-4' />
                     Deleting
                   </>
                 ) : (
                   <>
-                    <Trash className='mr-2 w-4 h-2' />
+                    <Trash className='mr-2 w-4 h-4' />
                     Delete
                   </>
                 )}
