@@ -1,4 +1,10 @@
 /* eslint-disable react-hooks/rules-of-hooks */
+/**
+ * eslint-disable react-hooks/rules-of-hooks
+ *
+ * @format
+ */
+
 /* eslint-disable react-hooks/exhaustive-deps */
 /**
  * @format
@@ -22,62 +28,50 @@ import {
   Home,
   BedDouble,
   Castle,
-  Loader2,
   MountainSnow,
-  Pencil,
-  Plus,
   Ship,
-  Trash,
   Trees,
   Tv,
   Users,
   UtensilsCrossed,
   VolumeX,
   Wifi,
-  Wand2,
+  MapPin,
 } from "lucide-react"
 import { Separator } from "../ui/separator"
-import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { Button } from "../ui/button"
-import axios from "axios"
 import { useToast } from "@/components/ui/use-toast"
-import { DateRange } from "react-day-picker"
-import { differenceInCalendarDays, eachDayOfInterval } from "date-fns"
-import { Checkbox } from "../ui/checkbox"
+import { differenceInCalendarDays } from "date-fns"
 import { useAuth } from "@clerk/nextjs"
 import useBookRoom from "@/hooks/useBookRoom"
 import useLocation from "@/hooks/useLocation"
 import moment from "moment"
-import AddRoomForm from "../room/AddRoomForm"
 
 interface MyBookingsClientProps {
-  booking: Booking & {Room:  Room | null } & {Hotel: Hotel | null}
+  booking: Booking & { Room: Room | null } & { Hotel: Hotel | null }
 }
 
 const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
   const { setRoomData, paymentIntentId, setClientSecret, setPaymentIntentId } =
     useBookRoom()
-  const [isLoading, setIsLoading] = useState(false)
   const [bookingIsLoading, setBookingIsLoading] = useState(false)
-  const {getCountryByCode, getStateByCode} = useLocation()
-  const {Hotel, Room} = booking
+  const { getCountryByCode, getStateByCode } = useLocation()
   const { userId } = useAuth()
   const router = useRouter()
+  const { toast } = useToast()
+  const { Hotel, Room } = booking
 
-  if(!Hotel || !Room) return <div>Missing Data</div>
+
+  if (!Hotel || !Room) return <div>Missing Data...</div>
 
   const country = getCountryByCode(Hotel.country)
   const state = getStateByCode(Hotel.country, Hotel.state)
-  const { toast } = useToast()
 
   const startDate = moment(booking.startDate).format("MMMM Do YYYY")
   const endDate = moment(booking.endDate).format("MMMM Do YYYY")
-  const dayCount = differenceInCalendarDays(
-    booking.endDate,
-    booking.startDate
-  )
-
+  const dayCount = differenceInCalendarDays(booking.endDate, booking.startDate)
 
   const handleBookRoom = () => {
     if (!userId)
@@ -92,61 +86,71 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
         description: "Something went wrong, refresh the page and try again!.",
       })
 
-      setBookingIsLoading(true)
+    setBookingIsLoading(true)
 
-      const bookingRoomData = {
-        room: Room,
-        totalPrice: booking.totalPrice,
-        breakFastIncluded: booking.breakFastIncluded,
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-      }
-
-      setRoomData(bookingRoomData)
-
-      fetch("/api/create-payment-intent", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          booking: {
-            hotelOwnerId: Hotel.userId,
-            hotelId: Hotel.id,
-            roomId: Room.id,
-            startDate: bookingRoomData.startDate,
-            endDate: bookingRoomData.endDate,
-            breakFastIncluded: bookingRoomData.breakFastIncluded,
-            totalPrice: bookingRoomData.totalPrice,
-          },
-          payment_intent_id: paymentIntentId,
-        }),
-      })
-        .then((res) => {
-          setBookingIsLoading(false)
-          if (res.status === 401) {
-            return router.push("/login")
-          }
-
-          return res.json()
-        })
-        .then((data) => {
-          setClientSecret(data.paymentIntent.client_secret)
-          setPaymentIntentId(data.paymentIntent.id)
-          router.push("/book-room")
-        })
-        .catch((error: any) => {
-          console.log("Error", error)
-          toast({
-            variant: "destructive",
-            description: `ERROR! ${error.message}`,
-          })
-        })
+    const bookingRoomData = {
+      room: Room,
+      totalPrice: booking.totalPrice,
+      breakFastIncluded: booking.breakFastIncluded,
+      startDate: booking.startDate,
+      endDate: booking.endDate,
     }
+
+    setRoomData(bookingRoomData)
+
+    fetch("/api/create-payment-intent", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        booking: {
+          hotelOwnerId: Hotel.userId,
+          hotelId: Hotel.id,
+          roomId: Room.id,
+          startDate: bookingRoomData.startDate,
+          endDate: bookingRoomData.endDate,
+          breakFastIncluded: bookingRoomData.breakFastIncluded,
+          totalPrice: bookingRoomData.totalPrice,
+        },
+        payment_intent_id: paymentIntentId,
+      }),
+    })
+      .then((res) => {
+        setBookingIsLoading(false)
+        if (res.status === 401) {
+          return router.push("/login")
+        }
+
+        return res.json()
+      })
+      .then((data) => {
+        setClientSecret(data.paymentIntent.client_secret)
+        setPaymentIntentId(data.paymentIntent.id)
+        router.push("/book-room")
+      })
+      .catch((error: any) => {
+        console.log("Error", error)
+        toast({
+          variant: "destructive",
+          description: `ERROR! ${error.message}`,
+        })
+      })
+  }
 
   return (
     <Card>
       <CardHeader>
+        <CardTitle>{Hotel.title}</CardTitle>
+        <CardDescription>
+          <div className='font-semibold mt-4'>
+            <AmenityItem>
+              <MapPin className='h-4 w-4' />
+              {country?.name}, {state?.name}, {Hotel.city}{" "}
+            </AmenityItem>
+            <p className='py-2'>{Hotel.locationDescription}</p>
+          </div>
+        </CardDescription>
         <CardTitle>{Room.title}</CardTitle>
         <CardDescription>{Room.description}</CardDescription>
       </CardHeader>
@@ -258,7 +262,44 @@ const MyBookingsClient: React.FC<MyBookingsClientProps> = ({ booking }) => {
           )}
         </div>
         <Separator />
+        <div className='flex flex-col gap-2'>
+          <CardTitle>Booking Details</CardTitle>
+          <div className='text-primary/50'>
+            <div>
+              Room booked by {booking.userName} for {dayCount} days -{" "}
+              {moment(booking.bookedAt).fromNow()}
+            </div>
+            <div>Check-in: {startDate} at 5PM</div>
+            <div>Check-out: {endDate} at 5PM</div>
+            {booking.breakFastIncluded && <div>Breakfast will be served</div>}
+            {booking.paymentStatus ? (
+              <div className='text-teal-500'>
+                Paid ${booking.totalPrice} - Room Reserved
+              </div>
+            ) : (
+              <div className='text-rose-500'>
+                Not Paid ${booking.totalPrice} - Room Not Resered
+              </div>
+            )}
+          </div>
+        </div>
       </CardContent>
+
+      <CardFooter className="flex items-center justify-between">
+        <Button
+          disabled={bookingIsLoading}
+          variant='outline'
+          onClick={() => router.push(`/hotel-details/${Hotel.id}`)}>
+          View Hotel
+        </Button>
+        {!booking.paymentStatus && booking.userId === userId && (
+          <Button
+            disabled={bookingIsLoading}
+            onClick={() => handleBookRoom()}>
+            {bookingIsLoading ? "Processing..." : "Pay Now"}
+          </Button>
+        )}
+      </CardFooter>
     </Card>
   )
 }

@@ -163,7 +163,7 @@ function RookPaymentFrom({
         </div>
       
         <Separator />
-        <div className="font-bold text-lg">
+        <div className="font-bold text-lg mb-4">
           {bookingRoomData?.breakFastIncluded && <div className="mb-2">Breakfast Price : ${bookingRoomData.room.breackFastPrice} /day</div>}
           Total Price: ${bookingRoomData?.totalPrice}
         </div>

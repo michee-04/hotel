@@ -2,15 +2,14 @@
 
 import { auth } from "@clerk/nextjs"
 import { createUploadthing, type FileRouter } from "uploadthing/next"
-import { UploadThingError } from "uploadthing/server"
 
 const f = createUploadthing()
 
 export const ourFileRouter: any = {
   imageUploader: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
-    .middleware(async (req) => {
+    .middleware(async ({ req }) => {
       const { userId } = auth()
-      if (!userId) throw new UploadThingError("Unauthorized")
+      if (!userId) throw new Error("Unauthorized")
 
       return { userId }
     })
