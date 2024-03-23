@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectTrigger, SelectValue } from "./ui/select"
 import useLocation from "@/hooks/useLocation"
 import { SelectItem } from "@radix-ui/react-select"
 import { ICity, IState } from "country-state-city"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "./ui/button"
 
 function LocationFilter() {
@@ -20,6 +20,7 @@ function LocationFilter() {
 
   const router = useRouter()
   const params = useSearchParams()
+  const pathname = usePathname()
 
   const {getAllCountries, getCountryStates, getStateCities} = useLocation()
   const countries = getAllCountries()
@@ -92,6 +93,8 @@ function LocationFilter() {
     setState("")
     setCity("")
   }
+
+  if(pathname !== "/") return null;
 
   return (
     <Container>
